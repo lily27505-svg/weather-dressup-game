@@ -62,6 +62,9 @@
     /* 字體設定（透明底要用深色字） */
     display: flex; justify-content: center; align-items: center; 
     font-weight: bold; color: #555; font-size: 14px;
+
+/* 🌟 新增：防止觸控拖拉時畫面捲動 */
+    touch-action: none;
   }
 
   /* 拖拉緊嗰陣嘅效果 */
@@ -233,9 +236,11 @@
     el.style.aspectRatio = '1 / 1'; 
     el.style.boxShadow = 'none';
     el.style.borderRadius = '8px';
+    el.style.position = 'static'; // 觸控重置
+    el.style.zIndex = '1';
   }
 
-  // 拖拉事件
+  // --- 1. 原本的電腦滑鼠拖拉事件 (保持不變) ---
   draggables.forEach(draggable => {
     draggable.addEventListener('dragstart', (e) => {
       e.dataTransfer.setData('text/plain', draggable.id);
@@ -244,7 +249,6 @@
     draggable.addEventListener('dragend', () => { draggable.style.opacity = '1'; });
   });
 
-  // 放置區事件
   dropZones.forEach(zone => {
     zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
     zone.addEventListener('dragleave', () => { zone.classList.remove('drag-over'); });
@@ -252,58 +256,127 @@
     zone.addEventListener('drop', (e) => {
       e.preventDefault();
       zone.classList.remove('drag-over');
-
       const draggedId = e.dataTransfer.getData('text/plain');
-      const draggedElement = document.getElementById(draggedId);
-      const targetZoneId = draggedElement.getAttribute('data-target');
-      const zoneAcceptId = zone.getAttribute('data-accept');
-
-      if (targetZoneId === zoneAcceptId) {
-        
-        if (zoneAcceptId === 'accessory') {
-            // 如果是配飾區，清空提示字，並允許疊加放入
-            const hint = zone.querySelector('span');
-            if(hint) hint.remove();
-            
-            zone.appendChild(draggedElement);
-            // 讓配飾在框框裡保持像圖示一樣大小
-            draggedElement.style.width = '200px'; 
-            draggedElement.style.height = 'auto';
-            draggedElement.style.aspectRatio = '1 / 1';
-            draggedElement.style.boxShadow = 'none';
-        } else {
-            // 如果是身體部位（頭/身/腳），只能著一件衫
-            // 將原本已經喺上面嘅衫踢返去衣櫃
-            Array.from(zone.children).forEach(child => {
-                wardrobe.appendChild(child);
-                resetClothingStyle(child);
-            });
-            
-            zone.appendChild(draggedElement);
-            // 衣服填滿身體部位
-            draggedElement.style.width = '100%';
-            draggedElement.style.height = '100%';
-            draggedElement.style.boxShadow = 'none';
-            draggedElement.style.borderRadius = '0';
-        }
-      } else {
-        alert('哎呀！呢件物品唔係放呢度㗎！');
-      }
+      handleDropEvent(document.getElementById(draggedId), zone);
     });
   });
 
-  // 衣櫃接收物品
   wardrobe.addEventListener('dragover', (e) => { e.preventDefault(); });
   wardrobe.addEventListener('drop', (e) => {
     e.preventDefault();
     const draggedId = e.dataTransfer.getData('text/plain');
     const draggedElement = document.getElementById(draggedId);
-    
     if (draggedElement) {
       wardrobe.appendChild(draggedElement);
       resetClothingStyle(draggedElement);
     }
   });
+
+
+  // --- 2. 新增的 iPad/觸控螢幕拖拉事件 ---
+  let activeTouchElement = null;
+  let initialX = 0;
+  let initialY = 0;
+
+  draggables.forEach(draggable => {
+    draggable.addEventListener('touchstart', (e) => {
+      activeTouchElement = draggable;
+      const touch = e.touches[0];
+      const rect = draggable.getBoundingClientRect();
+      
+      // 計算手指點擊位置與圖片左上角的距離
+      initialX = touch.clientX - rect.left;
+      initialY = touch.clientY - rect.top;
+
+      // 將元素設為絕對定位，讓它跟隨手指
+      draggable.style.position = 'fixed';
+      draggable.style.zIndex = '1000';
+      draggable.style.width = rect.width + 'px';
+      draggable.style.height = rect.height + 'px';
+      draggable.style.left = (touch.clientX - initialX) + 'px';
+      draggable.style.top = (touch.clientY - initialY) + 'px';
+      draggable.style.opacity = '0.8';
+    }, {passive: false});
+
+    draggable.addEventListener('touchmove', (e) => {
+      if (!activeTouchElement) return;
+      e.preventDefault(); // 防止畫面滑動
+      const touch = e.touches[0];
+      
+      // 更新元素位置
+      activeTouchElement.style.left = (touch.clientX - initialX) + 'px';
+      activeTouchElement.style.top = (touch.clientY - initialY) + 'px';
+    }, {passive: false});
+
+    draggable.addEventListener('touchend', (e) => {
+      if (!activeTouchElement) return;
+      const touch = e.changedTouches[0];
+      activeTouchElement.style.opacity = '1';
+      activeTouchElement.style.display = 'none'; // 暫時隱藏以取得下方元素
+      
+      // 找出手指放開時，下方的元素是哪一個
+      const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+      activeTouchElement.style.display = 'flex'; // 恢復顯示
+
+      // 檢查是否放置在 drop-zone 內
+      const dropZoneBelow = elementBelow ? elementBelow.closest('.drop-zone') : null;
+      const wardrobeBelow = elementBelow ? elementBelow.closest('#wardrobe') : null;
+
+      if (dropZoneBelow) {
+        handleDropEvent(activeTouchElement, dropZoneBelow);
+      } else if (wardrobeBelow) {
+        wardrobe.appendChild(activeTouchElement);
+        resetClothingStyle(activeTouchElement);
+      } else {
+        // 沒有放到正確位置，退回衣櫃
+        wardrobe.appendChild(activeTouchElement);
+        resetClothingStyle(activeTouchElement);
+      }
+      activeTouchElement = null;
+    });
+  });
+
+  // --- 3. 整合處理「放置」邏輯 ---
+  function handleDropEvent(draggedElement, zone) {
+    if (!draggedElement) return;
+    
+    const targetZoneId = draggedElement.getAttribute('data-target');
+    const zoneAcceptId = zone.getAttribute('data-accept');
+
+    if (targetZoneId === zoneAcceptId) {
+      if (zoneAcceptId === 'accessory') {
+          const hint = zone.querySelector('span');
+          if(hint) hint.remove();
+          
+          zone.appendChild(draggedElement);
+          // 配飾重置大小，並取消 fixed 定位
+          draggedElement.style.position = 'static';
+          draggedElement.style.width = '200px'; 
+          draggedElement.style.height = 'auto';
+          draggedElement.style.aspectRatio = '1 / 1';
+          draggedElement.style.boxShadow = 'none';
+      } else {
+          // 衣服邏輯：將舊衣服送回衣櫃
+          Array.from(zone.children).forEach(child => {
+              if(child.classList.contains('clothing')){
+                 wardrobe.appendChild(child);
+                 resetClothingStyle(child);
+              }
+          });
+          
+          zone.appendChild(draggedElement);
+          draggedElement.style.position = 'static';
+          draggedElement.style.width = '100%';
+          draggedElement.style.height = '100%';
+          draggedElement.style.boxShadow = 'none';
+          draggedElement.style.borderRadius = '0';
+      }
+    } else {
+      alert('哎呀！呢件物品唔係放呢度㗎！');
+      wardrobe.appendChild(draggedElement);
+      resetClothingStyle(draggedElement);
+    }
+  }
 </script>
 </body>
 </html>
