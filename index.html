@@ -2,20 +2,49 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>天氣穿衣小遊戲 - 完美放大版</title>
 <style>
-  body {
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    /* 使用 dvh 以完美貼合 iOS Safari 工具列變化 */
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden; /* 防止整個頁面外框被不小心拉動 */
+    overscroll-behavior: none; /* 防止 iPad 邊緣回彈效果 */
+    touch-action: none; /* 停用預設手勢 */
+    box-sizing: border-box;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f0f8ff;
-    display: flex; flex-direction: column; align-items: center; padding: 20px;
+    
+    /* 置中排版 */
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
   }
-  h1 { color: #333; margin-bottom: 5px; }
-  
+
+  h1 { color: #333; margin-top: 15px; margin-bottom: 5px; }
+
+  /* 🌟 遊戲主容器 */
   #game-container {
-    display: flex; gap: 50px; margin-top: 20px;
-    background: white; padding: 30px; border-radius: 15px;
+    display: flex; 
+    gap: 30px; /* 稍微縮小間距適應平板 */
+    margin-top: 10px;
+    background: white; 
+    padding: 20px; 
+    border-radius: 15px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    
+    /* 🌟 iPad 適應關鍵：允許內容換行，高度不足時可在框內滑動 */
+    flex-wrap: wrap; 
+    justify-content: center;
+    max-width: 98vw;
+    max-height: 85dvh; 
+    overflow-y: auto; 
+    overflow-x: hidden;
+    touch-action: pan-y; /* 允許在容器內上下滑動 */
   }
 
   /* 左側衣櫃區 */
@@ -24,151 +53,119 @@
     flex-direction: column; 
     align-items: center;
   }
- 
- #wardrobe {
-    width: 400px;
+
+  #wardrobe {
+    width: 360px; /* 稍微收窄一點，讓 iPad 橫向更易放得落 */
     border: 3px dashed #ccc; border-radius: 10px;
     padding: 15px; background-color: #fafafa;
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;
     align-content: start;
-    max-height: 720px; 
+    max-height: 600px; /* 配合 iPad 高度 */
     overflow-y: auto; 
+    touch-action: pan-y; /* 🌟 確保衣櫃內部可以用手指上下滑動搵衫 */
   }
-
-  .clothing:active { cursor: grabbing; transform: scale(0.95); }
 
   /* 預防圖片變形的關鍵設定 */
   .clothing img, .drop-zone img {
     width: 100%; height: 100%;
-    object-fit: contain; /* 確保圖片按比例縮放，絕不變形 */
+    object-fit: contain;
   }
 
-  /* 最新版本：透明底色 + 完美正方形格仔 */
+  /* 衣服項目 */
   .clothing {
     width: 100%; 
-    aspect-ratio: 1 / 1; /* 🌟 關鍵：取代 height: 90px，強制變成 1:1 正方形！ */
-    
+    aspect-ratio: 1 / 1; 
     border-radius: 8px; 
     cursor: grab; 
     user-select: none;
     transition: transform 0.2s;
     box-sizing: border-box;
-    
-    /* 透明底色 */
     background-color: transparent; 
-    /* 如果你想格仔有個淺色虛線框方便睇，可以加返下面呢行： */
-    /border: 2px dashed #bbb;
-    
-    /* 字體設定（透明底要用深色字） */
     display: flex; justify-content: center; align-items: center; 
     font-weight: bold; color: #555; font-size: 14px;
-
-/* 🌟 新增：防止觸控拖拉時畫面捲動 */
+    /* 防止觸控拖拉時畫面捲動 */
     touch-action: none;
   }
 
-  /* 拖拉緊嗰陣嘅效果 */
   .clothing:active { 
     cursor: grabbing; 
     transform: scale(0.95);
-    background-color: rgba(0,0,0,0.05); /* 撳落去有少少陰影 */
+    background-color: rgba(0,0,0,0.05); 
   }
 
   /* =========================================
      右側：人物 + 配飾區佈局
      ========================================= */
   #right-panel {
-    display: flex; gap: 40px; align-items: flex-start;
+    display: flex; 
+    gap: 30px; 
+    align-items: flex-start;
+    flex-wrap: wrap; /* 🌟 確保 iPad 直向時人物和配飾可以上下疊放 */
+    justify-content: center;
   }
 
-  /* 角色全身底圖區 */
   #character-wrapper {
     display: flex; flex-direction: column; align-items: center;
   }
+
   .char-title { font-weight: bold; color: #333; margin-bottom: 15px; }
 
-  /* 🌟 全新做法：將 #character 變成一張全身畫布 */
   #character {
-    position: relative; /* 設定為基準點，等裡面嘅隱形格仔可以準確定位 */
-    width: 396px;       /* 畫布闊度 (可按你張全身圖比例修改) */
-    height: 720px;      /* 畫布高度 (可按你張全身圖比例修改) */
-    background-image: url('whole_body.png'); /* 替換成你嘅全身圖 */
+    position: relative; 
+    width: 396px;       
+    height: 720px;      
+    background-image: url('whole_body.png'); 
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center top;
-    /* 加個淺色底框方便你睇到成個畫布範圍，對好位後可以刪除下面呢行 */
-    /border: 1px solid #eee; 
   }
 
   /* 隱形接收區 (通用設定) */
   .drop-zone {
-    /* 測試階段用紅色虛線，等你容易對位。對準後改成 transparent (透明) */
-    /border: 2px dashed rgba(255, 0, 0, 0.5); 
-    position: absolute; /* 浮動疊喺全身圖上面 */
+    position: absolute; 
     display: flex; justify-content: center; align-items: center;
     box-sizing: border-box;
     transition: all 0.3s;
   }
-  
-  /* 拖拉時著燈 */
+
   .drop-zone.drag-over {
     background-color: rgba(255, 243, 204, 0.7);
     border-color: #ff9f43; border-style: dashed;
   }
 
-  /* 🌟 設定隱形格仔嘅位置 (請根據你張圖慢慢修改數值) */
+  /* 隱形格仔的位置 (保持不變) */
   #zone-head { 
-    top: -100px;          /* 距離畫布頂部幾多 */
-    left: 46%;          /* 保持左右置中 */
-    transform: translateX(-50%);
-    width: 244px;       /* 頭部格仔闊度 */
-    height: 239px;      /* 頭部格仔高度 */
-    z-index: 3;
+    top: -100px; left: 46%; transform: translateX(-50%);
+    width: 244px; height: 239px; z-index: 3;
   }
   #zone-body { 
-    top: 150px;         /* 距離畫布頂部幾多 (例如喺個頭下面) */
-    left: 50%;
-    transform: translateX(-50%);
-    width: 340px;       /* 身體格仔闊度 */
-    height: 340px;      /* 身體格仔高度 */
-    z-index: 2;
+    top: 150px; left: 50%; transform: translateX(-50%);
+    width: 340px; height: 340px; z-index: 2;
   }
   #zone-legs { 
-    top: 387px;         /* 距離畫布頂部幾多 (例如喺個身下面) */
-    left: 50%;
-    transform: translateX(-50%);
-    width: 287px;       /* 腳部格仔闊度 */
-    height: 287px;      /* 腳部格仔高度 */
-    z-index: 1;
+    top: 387px; left: 50%; transform: translateX(-50%);
+    width: 287px; height: 287px; z-index: 1;
   }
-
   #zone-glasses { 
-    top: 30px;        
-    left: 50%;
-    transform: translateX(-50%);
-    width: 178px;    
-    height: 178px;     
-    z-index: 4;
+    top: 30px; left: 50%; transform: translateX(-50%);
+    width: 178px; height: 178px; z-index: 4;
   }
 
-
-  /* =========================================
-     配飾區 (保持不變，喺人物右邊)
-     ========================================= */
+  /* 配飾區 */
   #accessories-wrapper {
     display: flex; flex-direction: column; align-items: center;
   }
+
   #zone-accessory {
-    position: static; /* 唔浮動，自己獨立一個框 */
+    position: static; 
     width: 250px; min-height: 720px; 
     border: 3px dashed #ccc; border-radius: 10px;
     background-color: #fdfdfd; padding: 15px;
     display: flex; flex-direction: column; gap: 15px;
     align-items: center; justify-content: flex-start;
   }
-
-
 </style>
+
 </head>
 <body>
 
