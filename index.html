@@ -60,7 +60,7 @@
     padding: 15px; background-color: #fafafa;
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;
     align-content: start;
-    max-height: 600px; /* 配合 iPad 高度 */
+    max-height: 700px; /* 配合 iPad 高度 */
     overflow-y: auto; 
     touch-action: pan-y; /* 🌟 確保衣櫃內部可以用手指上下滑動搵衫 */
   }
@@ -133,43 +133,103 @@
     border-color: #ff9f43; border-style: dashed;
   }
 
-  /* 隱形格仔的位置 (保持不變) */
-  #zone-head { 
-    top: -100px; left: 46%; transform: translateX(-50%);
-    width: 244px; height: 239px; z-index: 3;
-  }
-  #zone-body { 
-    top: 150px; left: 50%; transform: translateX(-50%);
-    width: 340px; height: 340px; z-index: 2;
-  }
-  #zone-legs { 
-    top: 387px; left: 50%; transform: translateX(-50%);
-    width: 287px; height: 287px; z-index: 1;
-  }
-  #zone-glasses { 
-    top: 30px; left: 50%; transform: translateX(-50%);
-    width: 178px; height: 178px; z-index: 4;
+/* 🌟 全新自動縮放人物設定 */
+  #character {
+    /* 👇 🌟 魔法參數：在這裡調整大小！
+       0.8 代表 80%，0.75 代表 75%，1 代表 100%。您可以隨意更改這個數字測試！ */
+    --s: 0.95;
+
+    position: relative;
+    width: calc(396px * var(--s));
+    height: calc(720px * var(--s));
+    background-image: url('whole_body.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center top;
   }
 
+  /* 👇 以下所有隱形格仔都會跟隨上面的 --s 自動計算比例，絕不走位！ */
+  #zone-head {
+    top: calc(-100px * var(--s));
+    left: 46%;
+    transform: translateX(-50%);
+    width: calc(244px * var(--s));
+    height: calc(239px * var(--s));
+    z-index: 3;
+  }
+  #zone-body {
+    top: calc(150px * var(--s));
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(340px * var(--s));
+    height: calc(340px * var(--s));
+    z-index: 2;
+  }
+  #zone-legs {
+    top: calc(387px * var(--s));
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(287px * var(--s));
+    height: calc(287px * var(--s));
+    z-index: 1;
+  }
+  #zone-glasses {
+    top: calc(30px * var(--s));
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(178px * var(--s));
+    height: calc(178px * var(--s));
+    z-index: 4;
+  }
   /* 配飾區 */
   #accessories-wrapper {
     display: flex; flex-direction: column; align-items: center;
   }
 
-  #zone-accessory {
-    position: static; 
-    width: 250px; min-height: 720px; 
+#zone-accessory {
+    position: static;
+    width: 180px;
+    height: 720px; /* 🌟 固定高度，與左邊衣櫃對齊 */
+    overflow-y: auto; /* 🌟 加上捲軸，超出範圍可滾動 */
+    touch-action: pan-y; /* 🌟 確保 iPad 可以在這個框內上下滑動 */
+
     border: 3px dashed #ccc; border-radius: 10px;
     background-color: #fdfdfd; padding: 15px;
-    display: flex; flex-direction: column; gap: 15px;
-    align-items: center; justify-content: flex-start;
+
+    /* 🌟 改為雙排顯示，讓配飾自動縮小 */
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    gap: 15px;
+    align-content: start;
   }
+  #reset-btn {
+    margin-top: 5px;
+    padding: 12px 24px;
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    background-color: #ff6b6b; /* 鮮艷的紅色，吸引小朋友注意 */
+    border: none;
+    border-radius: 25px; /* 圓角設計 */
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: all 0.2s;
+    touch-action: manipulation; /* 🌟 確保 iPad 點擊反應順暢，不會延遲 */
+  }
+
+  /* 點擊時的縮小動畫效果 */
+  #reset-btn:active {
+    transform: scale(0.95);
+    background-color: #ff5252;
+  }
+
 </style>
 
 </head>
 <body>
 
   <h1>🌤️ 天氣穿衣小遊戲</h1>
+
   
   <div id="game-container">
     <!-- 左側衣櫃 -->
@@ -208,13 +268,14 @@
     <div id="right-panel">
       <!-- 人物 -->
       <div id="character-wrapper">
-        <div class="char-title">小朋友</div>
+        <div class="char-title">請為小朋友換上合適的衣服</div>
         <div id="character">
           <div class="drop-zone" id="zone-head" data-accept="zone-head"></div>
           <div class="drop-zone" id="zone-body" data-accept="zone-body"></div>
           <div class="drop-zone" id="zone-legs" data-accept="zone-legs"></div>
           <div class="drop-zone" id="zone-glasses" data-accept="zone-glasses"></div>
         </div>
+<button id="reset-btn">🔄 重置全部 / Reset</button> 
       </div>
 
       <!-- 配飾區 -->
@@ -225,13 +286,18 @@
           <span style="color:#aaa; text-align:center; font-size:14px;">放這裡</span>
         </div>
       </div>
-    </div>
+   </div>
+
   </div>
 
 <script>
   const draggables = document.querySelectorAll('.clothing');
   const dropZones = document.querySelectorAll('.drop-zone');
   const wardrobe = document.getElementById('wardrobe');
+
+draggables.forEach(item => {
+    item.originalHome = item.parentElement;
+});
 
   // 還原物品回到衣櫃時的樣式
   function resetClothingStyle(el) {
@@ -322,65 +388,91 @@
       const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
       activeTouchElement.style.display = 'flex'; // 恢復顯示
 
-      // 檢查是否放置在 drop-zone 內
+      // 🌟 寬容判定：只要碰到任何隱形格仔，或者是碰到「整個人物」，都算成功觸發！
       const dropZoneBelow = elementBelow ? elementBelow.closest('.drop-zone') : null;
-      const wardrobeBelow = elementBelow ? elementBelow.closest('#wardrobe') : null;
+      const characterBelow = elementBelow ? elementBelow.closest('#character') : null;
 
-      if (dropZoneBelow) {
-        handleDropEvent(activeTouchElement, dropZoneBelow);
-      } else if (wardrobeBelow) {
-        wardrobe.appendChild(activeTouchElement);
-        resetClothingStyle(activeTouchElement);
+      if (dropZoneBelow || characterBelow) {
+        // 放到了人物身上任何一處 -> 啟動智能吸附！
+        handleDropEvent(activeTouchElement);
       } else {
-        // 沒有放到正確位置，退回衣櫃
-        wardrobe.appendChild(activeTouchElement);
+        // 沒有放到人物身上，退回老家
+        if (activeTouchElement.originalHome) {
+            activeTouchElement.originalHome.appendChild(activeTouchElement);
+        }
         resetClothingStyle(activeTouchElement);
       }
       activeTouchElement = null;
     });
   });
 
-  // --- 3. 整合處理「放置」邏輯 ---
-  function handleDropEvent(draggedElement, zone) {
+  // --- 3. 整合處理「放置」邏輯 (智能吸附 + 支援多件配飾版) ---
+  function handleDropEvent(draggedElement) {
     if (!draggedElement) return;
     
+    // 讀取這件物品原本設定的目標
     const targetZoneId = draggedElement.getAttribute('data-target');
-    const zoneAcceptId = zone.getAttribute('data-accept');
+    const correctZone = document.querySelector(`.drop-zone[data-accept="${targetZoneId}"]`);
 
-    if (targetZoneId === zoneAcceptId) {
-      if (zoneAcceptId === 'accessory') {
-          const hint = zone.querySelector('span');
-          if(hint) hint.remove();
-          
-          zone.appendChild(draggedElement);
-          // 配飾重置大小，並取消 fixed 定位
-          draggedElement.style.position = 'static';
-          draggedElement.style.width = '200px'; 
-          draggedElement.style.height = 'auto';
-          draggedElement.style.aspectRatio = '1 / 1';
-          draggedElement.style.boxShadow = 'none';
-      } else {
-          // 衣服邏輯：將舊衣服送回衣櫃
-          Array.from(zone.children).forEach(child => {
-              if(child.classList.contains('clothing')){
-                 wardrobe.appendChild(child);
-                 resetClothingStyle(child);
-              }
-          });
-          
-          zone.appendChild(draggedElement);
-          draggedElement.style.position = 'static';
-          draggedElement.style.width = '100%';
-          draggedElement.style.height = '100%';
-          draggedElement.style.boxShadow = 'none';
-          draggedElement.style.borderRadius = '0';
+    if (correctZone) {
+      
+      // 🌟 關鍵修正：只有當目標「不是」配飾區時，才清空舊物品（衣服只能穿一件）
+      if (correctZone.id !== 'zone-accessory') {
+        Array.from(correctZone.children).forEach(child => {
+          if (child.classList.contains('clothing')) {
+            if (child.originalHome) {
+              child.originalHome.appendChild(child);
+            }
+            resetClothingStyle(child);
+          }
+        });
       }
+      
+      const hint = correctZone.querySelector('span');
+      if (hint) hint.remove(); 
+      
+      correctZone.appendChild(draggedElement);
+      
+      // 🌟 統一設定樣式
+      draggedElement.style.position = 'static';
+      draggedElement.style.width = '100%';
+      draggedElement.style.boxShadow = 'none';
+      draggedElement.style.borderRadius = '0';
+      
+      // 🌟 區分衣服與配飾的比例
+      if (correctZone.id === 'zone-accessory') {
+        // 配飾保持 1:1 正方形
+        draggedElement.style.height = 'auto';
+        draggedElement.style.aspectRatio = '1 / 1';
+      } else {
+        // 衣服填滿人物格仔
+        draggedElement.style.height = '100%';
+      }
+      
     } else {
-      alert('哎呀！呢件物品唔係放呢度㗎！');
-      wardrobe.appendChild(draggedElement);
+      // 找不到對應格仔，退回老家
+      if (draggedElement.originalHome) {
+        draggedElement.originalHome.appendChild(draggedElement);
+      }
       resetClothingStyle(draggedElement);
     }
   }
+
+// --- 4. 完美重置按鈕邏輯 ---
+  const resetBtn = document.getElementById('reset-btn');
+
+  resetBtn.addEventListener('click', () => {
+    draggables.forEach(item => {
+      // 🌟 直接將物品送回它剛載入時的「老家」（完全不會錯！）
+      if (item.originalHome) {
+        item.originalHome.appendChild(item);
+      }
+      // 還原大小與樣式
+      resetClothingStyle(item);
+    });
+  });
+
+
 </script>
 </body>
 </html>
