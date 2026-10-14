@@ -62,7 +62,7 @@
     align-content: start;
     max-height: 600px; /* 配合 iPad 高度 */
     overflow-y: auto; 
-    touch-action: pan-y; /* 🌟 確保衣櫃內部可以用手指上下滑動搵衫 */
+-webkit-overflow-scrolling: touch; /* 🌟 讓 iPad 滾動更順滑 */
   }
 
   /* 預防圖片變形的關鍵設定 */
@@ -84,7 +84,7 @@
     display: flex; justify-content: center; align-items: center; 
     font-weight: bold; color: #555; font-size: 14px;
     /* 防止觸控拖拉時畫面捲動 */
-    touch-action: none;
+    touch-action: pan-y;
   }
 
   .clothing:active { 
@@ -111,9 +111,10 @@
   .char-title { font-weight: bold; color: #333; margin-bottom: 15px; }
 
   #character {
+    --s: 0.75;
     position: relative; 
-    width: 396px;       
-    height: 600px;      
+    width: calc(396px * var(--s));
+    height: calc(720px * var(--s));    
     background-image: url('whole_body.png'); 
     background-size: contain;
     background-repeat: no-repeat;
@@ -188,7 +189,7 @@
 
 #zone-accessory {
     position: static;
-    width: 180px;
+    width: 160px;
     height: 620px; /* 🌟 固定高度，與左邊衣櫃對齊 */
     overflow-y: auto; /* 🌟 加上捲軸，超出範圍可滾動 */
     touch-action: pan-y; /* 🌟 確保 iPad 可以在這個框內上下滑動 */
@@ -221,6 +222,13 @@
   #reset-btn:active {
     transform: scale(0.95);
     background-color: #ff5252;
+  }
+
+  /* 針對 iPad 橫向解析度 (通常是 1024px 左右) */
+  @media (max-width: 1100px) {
+    #game-container {
+      zoom: 0.85; /* 如果整個畫面太大，把它改成 0.8 或 0.75 */
+    }
   }
 
 </style>
@@ -343,66 +351,90 @@ draggables.forEach(item => {
   });
 
 
-  // --- 2. 新增的 iPad/觸控螢幕拖拉事件 ---
+  // --- 2. 升級版 iPad/觸控螢幕拖拉與滾動事件 ---
   let activeTouchElement = null;
-  let initialX = 0;
-  let initialY = 0;
+  let initialX = 0, initialY = 0;
+  let startTouchX = 0, startTouchY = 0;
+  let isDragging = false; // 記錄現在是否真的在拖拉
 
   draggables.forEach(draggable => {
     draggable.addEventListener('touchstart', (e) => {
       activeTouchElement = draggable;
       const touch = e.touches[0];
-      const rect = draggable.getBoundingClientRect();
-      
-      // 計算手指點擊位置與圖片左上角的距離
-      initialX = touch.clientX - rect.left;
-      initialY = touch.clientY - rect.top;
-
-      // 將元素設為絕對定位，讓它跟隨手指
-      draggable.style.position = 'fixed';
-      draggable.style.zIndex = '1000';
-      draggable.style.width = rect.width + 'px';
-      draggable.style.height = rect.height + 'px';
-      draggable.style.left = (touch.clientX - initialX) + 'px';
-      draggable.style.top = (touch.clientY - initialY) + 'px';
-      draggable.style.opacity = '0.8';
-    }, {passive: false});
+      startTouchX = touch.clientX;
+      startTouchY = touch.clientY;
+      isDragging = false;
+      // 🌟 這裡先不把衣服浮起來，讓系統有時間判斷學生是想滾動還是拖拉
+    }, { passive: true }); // 允許瀏覽器原生滾動
 
     draggable.addEventListener('touchmove', (e) => {
       if (!activeTouchElement) return;
-      e.preventDefault(); // 防止畫面滑動
       const touch = e.touches[0];
       
-      // 更新元素位置
-      activeTouchElement.style.left = (touch.clientX - initialX) + 'px';
-      activeTouchElement.style.top = (touch.clientY - initialY) + 'px';
-    }, {passive: false});
+      const dx = touch.clientX - startTouchX;
+      const dy = touch.clientY - startTouchY;
+
+      if (!isDragging) {
+        // 🌟 智能判斷 1：如果上下滑動較多，判定為「瀏覽衣櫃」
+        if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
+          activeTouchElement = null; // 放棄拖拉，交給瀏覽器滾動
+          return;
+        }
+        
+        // 🌟 智能判斷 2：如果左右滑動較多，判定為「把衣服拉出來」
+        if (Math.abs(dx) > 10) {
+          isDragging = true;
+          
+          // 確定要拖拉了，這時才把衣服「拔」出來
+          const rect = activeTouchElement.getBoundingClientRect();
+          initialX = touch.clientX - rect.left;
+          initialY = touch.clientY - rect.top;
+          
+          activeTouchElement.style.position = 'fixed';
+          activeTouchElement.style.zIndex = '1000';
+          activeTouchElement.style.width = rect.width + 'px';
+          activeTouchElement.style.height = rect.height + 'px';
+          activeTouchElement.style.opacity = '0.8';
+        }
+      }
+
+      if (isDragging) {
+        if (e.cancelable) e.preventDefault(); // 真正拖拉時，阻止畫面滾動
+        activeTouchElement.style.left = (touch.clientX - initialX) + 'px';
+        activeTouchElement.style.top = (touch.clientY - initialY) + 'px';
+      }
+    }, { passive: false });
 
     draggable.addEventListener('touchend', (e) => {
       if (!activeTouchElement) return;
+      
+      if (!isDragging) {
+        // 如果只是普通點擊或滾動結束，什麼都不做
+        activeTouchElement = null;
+        return;
+      }
+
       const touch = e.changedTouches[0];
       activeTouchElement.style.opacity = '1';
       activeTouchElement.style.display = 'none'; // 暫時隱藏以取得下方元素
       
-      // 找出手指放開時，下方的元素是哪一個
       const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
       activeTouchElement.style.display = 'flex'; // 恢復顯示
 
-      // 🌟 寬容判定：只要碰到任何隱形格仔，或者是碰到「整個人物」，都算成功觸發！
       const dropZoneBelow = elementBelow ? elementBelow.closest('.drop-zone') : null;
       const characterBelow = elementBelow ? elementBelow.closest('#character') : null;
 
       if (dropZoneBelow || characterBelow) {
-        // 放到了人物身上任何一處 -> 啟動智能吸附！
         handleDropEvent(activeTouchElement);
       } else {
-        // 沒有放到人物身上，退回老家
         if (activeTouchElement.originalHome) {
             activeTouchElement.originalHome.appendChild(activeTouchElement);
         }
         resetClothingStyle(activeTouchElement);
       }
+      
       activeTouchElement = null;
+      isDragging = false;
     });
   });
 
